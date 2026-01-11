@@ -1,0 +1,12 @@
+{
+    "ssid": "....",
+    "password": "....",
+    "ota_user": "....",
+    "ota_password": "....",
+    "ssdp_name": "....",
+    "ssdp_modelname": "ESP32",
+    "mqtt_server": "....",
+    "mqtt_user": "....",
+    "mqtt_password": "....",
+    "mqtt_topic": "...."
+}

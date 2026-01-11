@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ESP32</title>
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        form { display: flex; flex-direction: column; max-width: 300px; }
+        label { margin-bottom: 5px; }
+        input { margin-bottom: 15px; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        input[type=submit] { background-color: #4CAF50; color: white; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>ESP32 Fan Control</h1>
+    <p>Current Temperature: <span id="temperature">--</span> &deg;C</p>
+    <div id="statusMessage" style="margin-bottom: 10px; color: green;"></div>
+    <div id="fanSpeed" style="margin-bottom: 10px; color: green;"></div>
+    <form id="controlForm" action="/update_parameters" method="POST">
+        <label for="fan_speed_slider">Fan Speed (0-255):</label>
+        <input type="range" id="fan_speed_slider" min="0" max="255" value="128">
+        <input type="number" id="fan_speed" name="fan_speed" min="0" max="255" value="128" required>
+        
+        <script>
+            const fanSpeedSlider = document.getElementById('fan_speed_slider');
+            const fanSpeedInput = document.getElementById('fan_speed');
+            const fanSpeedDisplay = document.getElementById('fanSpeed');
+
+            // Initialize the number input with the slider's default value
+            fanSpeedInput.value = fanSpeedSlider.value;
+
+            fanSpeedSlider.addEventListener('input', () => {
+                fanSpeedInput.value = fanSpeedSlider.value;
+            });
+
+            fanSpeedInput.addEventListener('input', () => {
+                fanSpeedSlider.value = fanSpeedInput.value;
+            });
+
+            const controlForm = document.getElementById('controlForm');
+            const statusMessage = document.getElementById('statusMessage');
+
+            controlForm.addEventListener('submit', async (event) => {
+                event.preventDefault(); // Prevent default form submission
+
+                const formData = new FormData(controlForm);
+                const response = await fetch('/update_parameters', {
+                    method: 'POST',
+                    body: new URLSearchParams(formData)
+                });
+
+                if (response.ok) {
+                    statusMessage.textContent = 'Parameters updated successfully!';
+                    statusMessage.style.color = 'green';
+                    setTimeout(() => {
+                        statusMessage.textContent = '';
+                    }, 3000); // Clear after 3 seconds
+                } else {
+                    statusMessage.textContent = 'Failed to update parameters.';
+                    statusMessage.style.color = 'red';
+                }
+            });
+        </script>
+        
+        <label for="temp_threshold">Temperature Threshold (C):</label>
+        <input type="number" id="temp_threshold" name="temp_threshold" value="20" required>
+        
+        <input type="submit" value="Update">
+    </form>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const temperatureElement = document.getElementById('temperature');
+
+            function connectWebSocket() {
+                const ws = new WebSocket(`ws://${window.location.host}/ws`);
+
+                ws.onopen = () => {
+                    console.log("WebSocket connection opened");
+                };
+
+                ws.onmessage = (event) => {
+                    console.log("WebSocket message received:", event.data);
+                    try {
+                        const message = JSON.parse(event.data);
+                        if (message.temperature !== undefined) {
+                            temperatureElement.innerText = parseFloat(message.temperature).toFixed(2);
+                        }
+                        if (message.fan_speed !== undefined) {
+                            fanSpeedDisplay.innerText = `Current Fan Speed: ${message.fan_speed}`;
+                        }
+                    } catch (e) {
+                        console.error("Error parsing WebSocket message:", e);
+                    }
+                };
+
+                ws.onerror = (error) => {
+                    console.log("WebSocket Error: ", error);
+                };
+
+                ws.onclose = () => {
+                    console.log("WebSocket connection closed. Reconnecting in 1 second...");
+                    setTimeout(connectWebSocket, 1000);
+                };
+            }
+
+            connectWebSocket();
+        });
+    </script>
+</body>
+</html>
